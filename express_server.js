@@ -55,8 +55,19 @@ app.get("/urls", (req, res) => {
 //Redirect to longURL 
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);  
+  res.redirect(longURL);
 });
+
+//Edit redirect to urls
+app.post("/urls/:shortURL/edit", (req, res) => {
+  console.log(urlDatabase);
+  urlDatabase[req.params.shortURL] = req.body.url;
+  
+  console.log(req.body);
+  console.log(urlDatabase);
+  res.redirect("/urls");
+});
+
 
 
 //Delete 
