@@ -8,6 +8,20 @@
       <div class="navbar-nav">
         <a class="nav-item nav-link" href="/urls">My URLs</a>
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
+        <% if(!username){ %>
+          <form method="POST" action="/login" class="form-inline">
+            <!-- Figure out how to turn the New URl: into a label instead of a form -->
+             <div class="form-group mx-sm-3 mb-2">
+               <input type="text" class="form-control" name="username" value='name="username"'>
+             </div>
+             <button type="submit" class="btn btn-primary mb-2">Submit</button>
+           </form>  
+        <% } else{ %>  
+          <form method="POST" action="/logout" class="form-inline">
+            <label for="colFormLabel" class="col-sm-2 col-form-label"><%= username %></label>
+            <!-- Figure out how to turn the New URl: into a label instead of a form -->
+             <button type="submit" class="btn btn-primary mb-2">Submit</button>
+             <% } %>
       </div>
     </div>
   </nav>
