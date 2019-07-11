@@ -1,11 +1,19 @@
+const _ = require('lodash');
 const express = require("express");
+const bcrypt = require('bcrypt');
 const app = express();
 const PORT = 8080; // default port 8080
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
+const bcryptSaltRounds = 10;
+
 // const bodyParser = require('body-parser');
 
 // app.use(bodyParser.urlencoded({ extended: true}));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: [ 'user_id' ],
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -18,12 +26,27 @@ const generateRandomString = function() {
   return result;
 };
 
+const findUserByEmail = function(email) {
+  for (let userID in users) {
+    if (users[userID].email === email) return users[userID];
+  }
+  return null;
+};
+
+const findURLsForUser = function(user) {
+  return _.filter(urlDatabase, { userID: user.id });
+};
+
 app.use(function(req, res, next) {
   req.user = {};
   req.signedIn = false;
-  if (req.cookies.user_id) {
+  if (req.session.user_id) {
     req.signedIn = true;
-    req.user = users[req.cookies.user_id];
+    req.user = users[req.session.user_id];
+  }
+  if (req.signedIn && !req.user) {
+    delete req.session.user_id;
+    req.signedIn = false;
   }
   req.templateVars = {
     user: req.user,
@@ -37,23 +60,39 @@ app.use(function(req, res, next) {
 app.set('view engine', 'ejs');
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {
+    shortURL: "b2xVn2",
+    longURL: "http://www.lighthouselabs.ca",
+    userID: '1234'
+  },
+  "9sm5xK": {
+    shortURL: "9sm5xK",
+    longURL: "http://www.google.com",
+    userID: '5678'
+  }
 };
 
 const users = {
-  /*"userRandomID:": {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur"
-  },*/
+  '1234': {
+    id: '1234',
+    email: 'aidan@example1.com',
+    password: bcrypt.hashSync('password', bcryptSaltRounds)
+  }, '5678': {
+    id: '5678',
+    email: 'aidan@example2.com',
+    password: bcrypt.hashSync('password', bcryptSaltRounds)
+  }
 };
 
 
 
 //TESTING CODE
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  if (req.signedIn) {
+    res.redirect('/urls');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get("/urls.json", (req, res) => {
@@ -73,46 +112,106 @@ app.get("/error", (req, res) => {
 //Rendering URLs
 app.get("/urls", (req, res) => {
   if (!req.signedIn) {
-    Object.assign(req.templateVars, { message: 'Access Denied.' });
+    Object.assign(req.templateVars, { message: 'You must log in to view this page.' });
     res.render("error", req.templateVars);
     return;
     //make sure to input this error for other pages
   }
-  Object.assign(req.templateVars, { urls: urlDatabase });
+  Object.assign(req.templateVars, { urls: findURLsForUser(req.user) });
   res.render('urls_index', req.templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
+  if (!req.signedIn) {
+    return res.redirect('/login');
+  }
   res.render("urls_new", req.templateVars);
 });
 
 //add new URL
 app.post("/urls", (req, res) => {
+  if (!req.signedIn) {
+    Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
+    res.render("error", req.templateVars);
+    return;
+  }
   let shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
+  urlDatabase[shortURL] = {
+    shortURL: shortURL,
+    longURL: req.body.longURL,
+    userID: req.user.id
+  };
   res.redirect(`/urls/${shortURL}`);
 });
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
+  let url = urlDatabase[req.params.shortURL];
+  if (!url) {
+    Object.assign(req.templateVars, { message: 'URL does not exist.' });
+    res.render("error", req.templateVars);
+    return;
+  }
+  res.redirect(url.longURL);
 });
 
+// SHOW URL info with edit form
 app.get('/urls/:shortURL', (req, res) => {
-  Object.assign(req.templateVars, { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] });
+  let url = urlDatabase[req.params.shortURL];
+  if (!url) {
+    Object.assign(req.templateVars, { message: 'URL does not exist.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (!req.signedIn) {
+    Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (url.userID != req.user.id) {
+    Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
+    res.render("error", req.templateVars);
+    return;
+  }
+  Object.assign(req.templateVars, { url: url });
   res.render('urls_show', req.templateVars);
 });
 
-//Edit redirect to urls
+// Submit edit to url
 app.post("/urls/:shortURL", (req, res) => {
-  urlDatabase[req.params.shortURL] = req.body.url;
+  let url = urlDatabase[req.params.shortURL];
+  if (!url) {
+    Object.assign(req.templateVars, { message: 'URL does not exist.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (!req.signedIn) {
+    Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (url.userID != req.user.id) {
+    Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
+    res.render("error", req.templateVars);
+    return;
+  }
+  url.longURL = req.body.url;
   res.redirect("/urls");
 });
 
 //Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
+  let url = urlDatabase[req.params.shortURL];
+  if (!url) {
+    Object.assign(req.templateVars, { message: 'URL does not exist.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (!req.signedIn) {
+    Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (url.userID != req.user.id) {
+    Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
+    res.render("error", req.templateVars);
+    return;
+  }
+  delete urlDatabase[url.shortURL];
   res.redirect('/urls');
 });
 
@@ -123,31 +222,53 @@ app.get('/register', (req, res) => {
 });
 
 app.post("/register", (req, res) => {
+  if (req.signedIn) return res.redirect('/urls');
+  if (req.body.email === "" || req.body.password === "") {
+    Object.assign(req.templateVars, { message: 'You must supply both an email and a password to register.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (findUserByEmail(req.body.email)) {
+    Object.assign(req.templateVars, { message: 'This email address is already in use.' });
+    res.render("error", req.templateVars);
+    return;
+  }
   let userID = generateRandomString();
+  let cryptedPassword = bcrypt.hashSync(req.body.password, bcryptSaltRounds);
   users[userID] = {
     id: userID,
     email: req.body.email,
-    password: req.body.password
+    password: cryptedPassword
   };
-  res.cookie("user_id", userID);
+  req.session.user_id = userID;
   res.redirect("/urls");
 });
 
 
 //Login
 app.get('/login', (req, res) => {
+  if (req.signedIn) return res.redirect('/urls');
   Object.assign(req.templateVars, { action: 'login' });
   res.render('urls_register', req.templateVars);
 });
 
 app.post("/login", (req, res) => {
-  res.cookie("user_id", req.body.username);
+  let user = findUserByEmail(req.body.email);
+  if (!user) {
+    Object.assign(req.templateVars, { message: 'User does not exist.' });
+    res.render("error", req.templateVars);
+    return;
+  } else if (!bcrypt.compareSync(req.body.password, user.password)) {
+    Object.assign(req.templateVars, { message: 'Invalid password.' });
+    res.render("error", req.templateVars);
+    return;
+  }
+  req.session.user_id = user.id;
   res.redirect("/urls");
 });
 
 //Logout
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  delete req.session.user_id;
   res.redirect("/urls");
 });
 

@@ -2,15 +2,16 @@
     
   <div class="card text-center">
       <div class="card-header"></div>
+      <h5 class="card-title">Edit</h5>
       <div class="card-body">
-        <h5 class="card-title">Edit</h5>
-        <form method="POST" action="/urls/<%= shortURL %>" class="form-inline">
+        <h6><%= url.shortURL %></h6>
+        <form method="POST" action="/urls/<%= url.shortURL %>" class="form-inline">
            <!-- Figure out how to turn the New URl: into a label instead of a form -->
             <div class="form-group mb-2">
               <input type="text" readonly class="form-control-plaintext" id="staticEmail2" value="New URL:">
             </div>
             <div class="form-group mx-sm-3 mb-2">
-              <input type="text" class="form-control" name="url" value="<%= longURL %>">
+              <input type="text" class="form-control" name="url" value="<%= url.longURL %>">
             </div>
             <button type="submit" class="btn btn-primary mb-2">Submit</button>
           </form>          
