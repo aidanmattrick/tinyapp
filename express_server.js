@@ -60,60 +60,24 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
 
 
 //Rendering URLs
-app.get("/urls/new", (req, res) => {
-  res.render("urls_new", req.templateVars);
-});
-
-app.get('/urls/:shortURL', (req, res) => {
-  Object.assign(req.templateVars, { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]);
-  res.render('urls_show', req.templateVars);
-});
-
-app.get('/register', (req, res) => {
-  res.render('urls_register', req.templateVars);
-});
-
 app.get("/urls", (req, res) => {
   Object.assign(req.templateVars, { urls: urlDatabase });
   res.render('urls_index', req.templateVars);
 });
 
-
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new", req.templateVars);
+});
 
 //add new URL
 app.post("/urls", (req, res) => {
-  urlDatabase[generateRandomString()] = req.body.longURL;
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
+  let shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;
+  res.redirect(`/urls/${shortURL}`);
 });
-
-//REGISTER
-app.post("/register", (req, res) => {
-  let userID = generateRandomString();
-  users[userID] = {id: userID, email: req.body.email, password: req.body.password};
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
-});
-
-
-//Login
-app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
-});
-
-//Logout
-app.post("/logout", (req, res) => {
-  res.clearCookie("username", req.body.username);
-  res.redirect("/urls");
-});
-
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
@@ -121,18 +85,60 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
+app.get('/urls/:shortURL', (req, res) => {
+  Object.assign(req.templateVars, { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] });
+  res.render('urls_show', req.templateVars);
+});
+
 //Edit redirect to urls
-app.post("/urls/:shortURL/edit", (req, res) => {
+app.post("/urls/:shortURL", (req, res) => {
   urlDatabase[req.params.shortURL] = req.body.url;
   res.redirect("/urls");
 });
-
 
 //Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect('/urls');
 });
+
+//REGISTER
+app.get('/register', (req, res) => {
+  Object.assign(req.templateVars, { action: 'register' });
+  res.render('urls_register', req.templateVars);
+});
+
+app.post("/register", (req, res) => {
+  let userID = generateRandomString();
+  users[userID] = {
+    id: userID,
+    email: req.body.email,
+    password: req.body.password
+  };
+  res.cookie("username", userID);
+  res.redirect("/urls");
+});
+
+
+//Login
+app.get('/login', (req, res) => {
+  Object.assign(req.templateVars, { action: 'login' });
+  res.render('urls_register', req.templateVars);
+});
+
+app.post("/login", (req, res) => {
+  res.cookie("username", req.body.username);
+  res.redirect("/urls");
+});
+
+//Logout
+app.post("/logout", (req, res) => {
+  res.clearCookie("username");
+  res.redirect("/urls");
+});
+
+
+
 
 
 app.listen(PORT, () => {
