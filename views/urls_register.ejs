@@ -1,8 +1,13 @@
 <%- include('partials/_header', { title: 'Register' }) %>
 
 <main style="margin: 1em;">
-  <h3>Register</h3>
-  <form action="/register" method="POST">
+  <% if(action == 'register') { %>
+    <h3>Register</h3>
+    <form action="/register" method="POST">
+  <% } else { %>
+    <h3>Login</h3>
+    <form action="/login" method="POST">
+  <% } %>
         <div class="form-group">
           <label for="exampleInputEmail1">Email address</label>
           <input type="email" class="form-control" id="email" aria-describedby="emailHelp" placeholder="Enter email">
