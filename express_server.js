@@ -24,15 +24,6 @@ const generateRandomString = function() {
   return result;
 };
 
-/*
-const findUserByEmail = function(email, users) {
-  for (let userID in users) {
-    if (users[userID].email === email) return users[userID];
-  }
-  return null;
-};
-*/
-
 
 const findURLsForUser = function(user) {
   return _.filter(urlDatabase, { userID: user.id });
@@ -120,13 +111,12 @@ app.get("/urls", (req, res) => {
     Object.assign(req.templateVars, { message: 'You must log in to view this page.' });
     res.render("error", req.templateVars);
     return;
-    //make sure to input this error for other pages
   }
   Object.assign(req.templateVars, { urls: findURLsForUser(req.user) });
   res.render('urls_index', req.templateVars);
 });
 
-
+//Redirect if not signed in
 app.get("/urls/new", (req, res) => {
   if (!req.signedIn) {
     return res.redirect('/login');
@@ -161,7 +151,7 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(url.longURL);
 });
 
-// SHOW URL info with edit form
+//SHOW URL info with edit form
 app.get('/urls/:shortURL', (req, res) => {
   let url = urlDatabase[req.params.shortURL];
   if (!url) {
