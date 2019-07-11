@@ -18,12 +18,12 @@ const generateRandomString = function() {
   return result;
 };
 
-app.use(function (req, res, next) {
+app.use(function(req, res, next) {
   req.user = {};
   req.signedIn = false;
-  if (req.cookies.user) {
+  if (req.cookies.user_id) {
     req.signedIn = true;
-    req.user = users[req.cookies.user];
+    req.user = users[req.cookies.user_id];
   }
   req.templateVars = {
     user: req.user,
@@ -60,10 +60,24 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+app.get("/users.json", (req, res) => {
+  res.json(users);
+});
+
+app.get("/error", (req, res) => {
+  Object.assign(req.templateVars, { message: 'Test Message.' });
+  res.render("error", req.templateVars);
+});
 
 
 //Rendering URLs
 app.get("/urls", (req, res) => {
+  if (!req.signedIn) {
+    Object.assign(req.templateVars, { message: 'Access Denied.' });
+    res.render("error", req.templateVars);
+    return;
+    //make sure to input this error for other pages
+  }
   Object.assign(req.templateVars, { urls: urlDatabase });
   res.render('urls_index', req.templateVars);
 });
@@ -115,7 +129,7 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     password: req.body.password
   };
-  res.cookie("username", userID);
+  res.cookie("user_id", userID);
   res.redirect("/urls");
 });
 
@@ -127,13 +141,13 @@ app.get('/login', (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
+  res.cookie("user_id", req.body.username);
   res.redirect("/urls");
 });
 
 //Logout
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
