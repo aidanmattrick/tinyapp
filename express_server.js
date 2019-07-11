@@ -5,10 +5,8 @@ const app = express();
 const PORT = 8080; // default port 8080
 const cookieSession = require('cookie-session');
 const bcryptSaltRounds = 10;
+const findUserByEmail = require('./helpers.js');
 
-// const bodyParser = require('body-parser');
-
-// app.use(bodyParser.urlencoded({ extended: true}));
 app.use(cookieSession({
   name: 'session',
   keys: [ 'user_id' ],
@@ -26,12 +24,15 @@ const generateRandomString = function() {
   return result;
 };
 
-const findUserByEmail = function(email) {
+/*
+const findUserByEmail = function(email, users) {
   for (let userID in users) {
     if (users[userID].email === email) return users[userID];
   }
   return null;
 };
+*/
+
 
 const findURLsForUser = function(user) {
   return _.filter(urlDatabase, { userID: user.id });
@@ -55,10 +56,10 @@ app.use(function(req, res, next) {
   next();
 });
 
-//console.log(generateRandomString());
 
 app.set('view engine', 'ejs');
 
+//DATABASE
 const urlDatabase = {
   "b2xVn2": {
     shortURL: "b2xVn2",
@@ -72,6 +73,7 @@ const urlDatabase = {
   }
 };
 
+//USERS
 const users = {
   '1234': {
     id: '1234',
@@ -86,7 +88,7 @@ const users = {
 
 
 
-//TESTING CODE
+//OPENER
 app.get("/", (req, res) => {
   if (req.signedIn) {
     res.redirect('/urls');
@@ -95,14 +97,17 @@ app.get("/", (req, res) => {
   }
 });
 
+//DATABASE DEBUG
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+//USERS DEBUG
 app.get("/users.json", (req, res) => {
   res.json(users);
 });
 
+//ERROR PAGE
 app.get("/error", (req, res) => {
   Object.assign(req.templateVars, { message: 'Test Message.' });
   res.render("error", req.templateVars);
@@ -121,6 +126,7 @@ app.get("/urls", (req, res) => {
   res.render('urls_index', req.templateVars);
 });
 
+
 app.get("/urls/new", (req, res) => {
   if (!req.signedIn) {
     return res.redirect('/login');
@@ -128,7 +134,7 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", req.templateVars);
 });
 
-//add new URL
+//Add new URL
 app.post("/urls", (req, res) => {
   if (!req.signedIn) {
     Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
@@ -166,7 +172,7 @@ app.get('/urls/:shortURL', (req, res) => {
     Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
     res.render("error", req.templateVars);
     return;
-  } else if (url.userID != req.user.id) {
+  } else if (url.userID !== req.user.id) {
     Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
     res.render("error", req.templateVars);
     return;
@@ -175,7 +181,7 @@ app.get('/urls/:shortURL', (req, res) => {
   res.render('urls_show', req.templateVars);
 });
 
-// Submit edit to url
+//Submit edit to url
 app.post("/urls/:shortURL", (req, res) => {
   let url = urlDatabase[req.params.shortURL];
   if (!url) {
@@ -186,7 +192,7 @@ app.post("/urls/:shortURL", (req, res) => {
     Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
     res.render("error", req.templateVars);
     return;
-  } else if (url.userID != req.user.id) {
+  } else if (url.userID !== req.user.id) {
     Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
     res.render("error", req.templateVars);
     return;
@@ -206,7 +212,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     Object.assign(req.templateVars, { message: 'You must be signed in to access this page.' });
     res.render("error", req.templateVars);
     return;
-  } else if (url.userID != req.user.id) {
+  } else if (url.userID !== req.user.id) {
     Object.assign(req.templateVars, { message: 'You are not the owner of this URL.' });
     res.render("error", req.templateVars);
     return;
@@ -215,19 +221,20 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect('/urls');
 });
 
-//REGISTER
+//GET Register
 app.get('/register', (req, res) => {
   Object.assign(req.templateVars, { action: 'register' });
   res.render('urls_register', req.templateVars);
 });
 
+//POST Register
 app.post("/register", (req, res) => {
   if (req.signedIn) return res.redirect('/urls');
   if (req.body.email === "" || req.body.password === "") {
     Object.assign(req.templateVars, { message: 'You must supply both an email and a password to register.' });
     res.render("error", req.templateVars);
     return;
-  } else if (findUserByEmail(req.body.email)) {
+  } else if (findUserByEmail(req.body.email, users)) {
     Object.assign(req.templateVars, { message: 'This email address is already in use.' });
     res.render("error", req.templateVars);
     return;
@@ -244,15 +251,16 @@ app.post("/register", (req, res) => {
 });
 
 
-//Login
+//GET Login
 app.get('/login', (req, res) => {
   if (req.signedIn) return res.redirect('/urls');
   Object.assign(req.templateVars, { action: 'login' });
   res.render('urls_register', req.templateVars);
 });
 
+//POST Login
 app.post("/login", (req, res) => {
-  let user = findUserByEmail(req.body.email);
+  let user = findUserByEmail(req.body.email, users);
   if (!user) {
     Object.assign(req.templateVars, { message: 'User does not exist.' });
     res.render("error", req.templateVars);
@@ -271,8 +279,6 @@ app.post("/logout", (req, res) => {
   delete req.session.user_id;
   res.redirect("/urls");
 });
-
-
 
 
 
