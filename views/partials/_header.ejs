@@ -22,11 +22,15 @@
         </div>
         <div class="mr-2">
           <% if (!signedIn) { %>
+            <a class="btn btn-primary my-2 my-sm-0" href="/register">Register</a>
             <a class="btn btn-primary my-2 my-sm-0" href="/login">Log In</a>
           <% } else { %>  
-            <form method="POST" action="/logout" class="form-inline" method="POST">
-              <button class="btn btn-secondary my-2 my-sm-0" type="submit">Log Out</button>
-            </form>
+            <div class="p-2 text-dark">Hello, <%= user.email %>!</div>
+            <div>
+              <form method="POST" action="/logout" class="form-inline" method="POST">
+                <button class="btn btn-secondary my-2 my-sm-0" type="submit">Log Out</button>
+              </form>
+            </div>
           <% } %>
         </div>
       </div>
