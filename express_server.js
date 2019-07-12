@@ -78,8 +78,6 @@ const users = {
 };
 
 
-
-//OPENER
 app.get("/", (req, res) => {
   if (req.signedIn) {
     res.redirect('/urls');
@@ -88,12 +86,12 @@ app.get("/", (req, res) => {
   }
 });
 
-//DATABASE DEBUG
+//DATABASE INFO
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-//USERS DEBUG
+//USERS INFO
 app.get("/users.json", (req, res) => {
   res.json(users);
 });
